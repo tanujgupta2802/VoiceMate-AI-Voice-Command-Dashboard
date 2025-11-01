@@ -20,6 +20,8 @@ import {
   X,
   Square,
   Music,
+  Play,
+  Pause,
 } from "lucide-react";
 import { auth } from "../firebase";
 import toast, { Toaster } from "react-hot-toast";
@@ -50,6 +52,9 @@ export default function VoiceCommand() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [triggeredReminder, setTriggeredReminder] = useState(null);
   const playerRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [activeMusic, setActiveMusic] = useState(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -238,8 +243,20 @@ export default function VoiceCommand() {
     const musicMsg = messages.find((m) => m.id === messageId && m.isMusic);
     if (!musicMsg) return;
 
-    if (action === "stop") {
-      if (playerRef.current) {
+    if (playerRef.current) {
+      if (action === "toggle") {
+        if (musicMsg.isPlaying) {
+          playerRef.current.pauseVideo();
+          setMessages((prev) =>
+            prev.map((m) => (m.id === messageId ? { ...m, isPlaying: false } : m))
+          );
+        } else {
+          playerRef.current.playVideo();
+          setMessages((prev) =>
+            prev.map((m) => (m.id === messageId ? { ...m, isPlaying: true } : m))
+          );
+        }
+      } else if (action === "stop") {
         playerRef.current.stopVideo();
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? { ...m, isPlaying: false } : m))
@@ -270,6 +287,17 @@ export default function VoiceCommand() {
                 m.id === messageId ? { ...m, isPlaying: true } : m
               )
             );
+            setActiveMusic(messageId);
+            setDuration(event.target.getDuration());
+            
+            // Update progress bar
+            const interval = setInterval(() => {
+              if (playerRef.current && playerRef.current.getCurrentTime) {
+                setCurrentTime(playerRef.current.getCurrentTime());
+              }
+            }, 500);
+            
+            playerRef.current.progressInterval = interval;
           },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.ENDED) {
@@ -278,6 +306,10 @@ export default function VoiceCommand() {
                   m.id === messageId ? { ...m, isPlaying: false } : m
                 )
               );
+              setActiveMusic(null);
+              if (playerRef.current.progressInterval) {
+                clearInterval(playerRef.current.progressInterval);
+              }
             } else if (event.data === window.YT.PlayerState.PLAYING) {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -301,6 +333,19 @@ export default function VoiceCommand() {
     } else {
       window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     }
+  };
+
+  const handleSeek = (messageId, value) => {
+    if (playerRef.current && activeMusic === messageId) {
+      playerRef.current.seekTo(value, true);
+      setCurrentTime(value);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   const deleteNote = async (id) => {
@@ -520,9 +565,12 @@ export default function VoiceCommand() {
         };
         setMessages((prev) => [...prev, aiMessage]);
 
-        if (currentText.toLowerCase().startsWith("create a note")) {
-          await listNotes();
-          toast.success("📝 Note saved successfully!");
+        if (currentText.toLowerCase().includes("create") && currentText.toLowerCase().includes("note")) {
+          // Force refresh notes after a short delay to ensure backend has saved
+          setTimeout(async () => {
+            await listNotes();
+            toast.success("📝 Note saved successfully!");
+          }, 500);
         }
       }
 
@@ -946,13 +994,24 @@ export default function VoiceCommand() {
 
                           {msg.isMusic && (
                             <div className="mt-4 pt-4 border-t border-slate-700/50">
-                              <div className="flex items-center justify-center gap-3">
+                              <div className="flex items-center justify-center gap-3 mb-3">
                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-lg">
-                                  <div className="flex gap-0.5">
-                                    <div className="w-1 h-1 bg-white rounded-full"></div>
-                                    <div className="w-1 h-1 bg-white rounded-full"></div>
-                                  </div>
+                                  <Music size={20} className="text-white" />
                                 </div>
+
+                                <button
+                                  onClick={() =>
+                                    handleMusicControl(msg.id, "toggle")
+                                  }
+                                  className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 flex items-center justify-center transition-all shadow-lg"
+                                  title={msg.isPlaying ? "Pause" : "Play"}
+                                >
+                                  {msg.isPlaying ? (
+                                    <Pause size={18} className="text-white" />
+                                  ) : (
+                                    <Play size={18} className="text-white ml-0.5" />
+                                  )}
+                                </button>
 
                                 <button
                                   onClick={() =>
@@ -964,6 +1023,36 @@ export default function VoiceCommand() {
                                   <Square size={16} className="text-white" />
                                 </button>
                               </div>
+
+                              {activeMusic === msg.id && (
+                                <div className="px-2">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xs text-slate-400 w-10">
+                                      {formatTime(currentTime)}
+                                    </span>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max={duration || 100}
+                                      value={currentTime}
+                                      onChange={(e) =>
+                                        handleSeek(msg.id, parseFloat(e.target.value))
+                                      }
+                                      className="flex-1 h-1 bg-slate-700 rounded-full appearance-none cursor-pointer seek-slider"
+                                      style={{
+                                        background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${
+                                          (currentTime / duration) * 100
+                                        }%, #334155 ${
+                                          (currentTime / duration) * 100
+                                        }%, #334155 100%)`,
+                                      }}
+                                    />
+                                    <span className="text-xs text-slate-400 w-10 text-right">
+                                      {formatTime(duration)}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="mt-3 flex items-center justify-center gap-1">
                                 {[...Array(5)].map((_, i) => (
@@ -1143,6 +1232,24 @@ export default function VoiceCommand() {
         }
         .scrollbar-track-transparent::-webkit-scrollbar-track {
           background: transparent;
+        }
+        .seek-slider::-webkit-slider-thumb {
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #8b5cf6;
+          cursor: pointer;
+          box-shadow: 0 0 4px rgba(139, 92, 246, 0.5);
+        }
+        .seek-slider::-moz-range-thumb {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #8b5cf6;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 0 4px rgba(139, 92, 246, 0.5);
         }
       `}</style>
     </div>
