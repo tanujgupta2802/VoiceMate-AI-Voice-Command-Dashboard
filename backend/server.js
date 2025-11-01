@@ -9,14 +9,8 @@ const actionRoutes = require("./routes/actionRoutes");
 const app = express();
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3003',
-    'https://voicemate-ai-voice-command-dashboard-n.onrender.com',
-    'https://voice-mate-ai-voice-command-dashboa-delta.vercel.app/'  
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  origin: '*',
+  credentials: true
 }));
 app.use(express.json());
 app.use("/api/command", commandRoutes);
