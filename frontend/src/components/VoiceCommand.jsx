@@ -248,12 +248,16 @@ export default function VoiceCommand() {
         if (musicMsg.isPlaying) {
           playerRef.current.pauseVideo();
           setMessages((prev) =>
-            prev.map((m) => (m.id === messageId ? { ...m, isPlaying: false } : m))
+            prev.map((m) =>
+              m.id === messageId ? { ...m, isPlaying: false } : m
+            )
           );
         } else {
           playerRef.current.playVideo();
           setMessages((prev) =>
-            prev.map((m) => (m.id === messageId ? { ...m, isPlaying: true } : m))
+            prev.map((m) =>
+              m.id === messageId ? { ...m, isPlaying: true } : m
+            )
           );
         }
       } else if (action === "stop") {
@@ -289,14 +293,14 @@ export default function VoiceCommand() {
             );
             setActiveMusic(messageId);
             setDuration(event.target.getDuration());
-            
+
             // Update progress bar
             const interval = setInterval(() => {
               if (playerRef.current && playerRef.current.getCurrentTime) {
                 setCurrentTime(playerRef.current.getCurrentTime());
               }
             }, 500);
-            
+
             playerRef.current.progressInterval = interval;
           },
           onStateChange: (event) => {
@@ -345,7 +349,7 @@ export default function VoiceCommand() {
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   const deleteNote = async (id) => {
@@ -529,12 +533,12 @@ export default function VoiceCommand() {
                   isPlaying: false,
                 };
                 setMessages((prev) => [...prev, musicMessage]);
-                
+
                 // Automatically initialize and play the music
                 setTimeout(() => {
                   initializePlayer(videoId, musicMessage.id);
                 }, 500);
-                
+
                 toast.success(`🎵 Music loaded: ${songName || "Music"}`, {
                   duration: 3000,
                   icon: "🎵",
@@ -565,7 +569,10 @@ export default function VoiceCommand() {
         };
         setMessages((prev) => [...prev, aiMessage]);
 
-        if (currentText.toLowerCase().includes("create") && currentText.toLowerCase().includes("note")) {
+        if (
+          currentText.toLowerCase().includes("create") &&
+          currentText.toLowerCase().includes("note")
+        ) {
           // Force refresh notes after a short delay to ensure backend has saved
           setTimeout(async () => {
             await listNotes();
@@ -1009,7 +1016,10 @@ export default function VoiceCommand() {
                                   {msg.isPlaying ? (
                                     <Pause size={18} className="text-white" />
                                   ) : (
-                                    <Play size={18} className="text-white ml-0.5" />
+                                    <Play
+                                      size={18}
+                                      className="text-white ml-0.5"
+                                    />
                                   )}
                                 </button>
 
@@ -1036,7 +1046,10 @@ export default function VoiceCommand() {
                                       max={duration || 100}
                                       value={currentTime}
                                       onChange={(e) =>
-                                        handleSeek(msg.id, parseFloat(e.target.value))
+                                        handleSeek(
+                                          msg.id,
+                                          parseFloat(e.target.value)
+                                        )
                                       }
                                       className="flex-1 h-1 bg-slate-700 rounded-full appearance-none cursor-pointer seek-slider"
                                       style={{
