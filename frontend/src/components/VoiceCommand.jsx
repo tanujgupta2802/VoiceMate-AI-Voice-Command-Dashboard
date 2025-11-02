@@ -1327,14 +1327,21 @@ export default function VoiceCommand() {
   const [duration, setDuration] = useState(0);
   const [activeMusic, setActiveMusic] = useState(null);
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      // Smooth scroll with inline positioning to avoid over-scrolling
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: "smooth",
-        block: "end",
-        inline: "nearest"
-      });
+  // const scrollToBottom = () => {
+  //   if (messagesEndRef.current) {
+  //     // Smooth scroll with inline positioning to avoid over-scrolling
+  //     messagesEndRef.current.scrollIntoView({ 
+  //       behavior: "smooth",
+  //       block: "end",
+  //       inline: "nearest"
+  //     });
+  //   }
+  // };
+   const scrollToBottom = () => {
+    // Scroll only within the messages container, not the whole page
+    const messagesContainer = messagesEndRef.current?.parentElement;
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   };
 
