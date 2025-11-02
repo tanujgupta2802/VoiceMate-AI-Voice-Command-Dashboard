@@ -1308,7 +1308,6 @@
 //   );
 // }
 
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   sendCommand,
@@ -1366,27 +1365,22 @@ export default function VoiceCommand() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeMusic, setActiveMusic] = useState(null);
-  const [shouldScroll, setShouldScroll] = useState(false);
 
-  const scrollToBottom = () => {
-    // Only scroll on mobile and only when shouldScroll is true
-    if (window.innerWidth <= 768 && shouldScroll) {
-      const messagesContainer = messagesEndRef.current?.parentElement;
-      if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        setShouldScroll(false);
-      }
+   const scrollToBottom = () => {
+    // Scroll only within the messages container, not the whole page
+    const messagesContainer = messagesEndRef.current?.parentElement;
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   };
 
   useEffect(() => {
-    if (shouldScroll) {
-      const timer = setTimeout(() => {
-        scrollToBottom();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [messages, shouldScroll]);
+    // Small delay to ensure content is rendered before scrolling
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [messages]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
@@ -1618,6 +1612,7 @@ export default function VoiceCommand() {
             setActiveMusic(messageId);
             setDuration(event.target.getDuration());
 
+            // Update progress bar
             const interval = setInterval(() => {
               if (playerRef.current && playerRef.current.getCurrentTime) {
                 setCurrentTime(playerRef.current.getCurrentTime());
@@ -1796,11 +1791,6 @@ export default function VoiceCommand() {
       return;
     }
 
-    // Enable scroll only on mobile when message is sent
-    if (window.innerWidth <= 768) {
-      setShouldScroll(true);
-    }
-
     const userMessage = {
       id: Date.now(),
       type: "user",
@@ -1862,6 +1852,7 @@ export default function VoiceCommand() {
                 };
                 setMessages((prev) => [...prev, musicMessage]);
 
+                // Automatically initialize and play the music
                 setTimeout(() => {
                   initializePlayer(videoId, musicMessage.id);
                 }, 500);
@@ -1900,6 +1891,7 @@ export default function VoiceCommand() {
           currentText.toLowerCase().includes("create") &&
           currentText.toLowerCase().includes("note")
         ) {
+          // Force refresh notes after a short delay to ensure backend has saved
           setTimeout(async () => {
             await listNotes();
             toast.success("📝 Note saved successfully!");
@@ -1915,6 +1907,17 @@ export default function VoiceCommand() {
       const updated = [newEntry, ...history].slice(0, 50);
       setHistory(updated);
       localStorage.setItem("vm_history", JSON.stringify(updated));
+      
+      // Scroll window down after message is sent (only on mobile/small screens)
+      setTimeout(() => {
+        if (window.innerWidth <= 1024) {
+          window.scrollBy({
+            top: 200,
+            behavior: 'smooth'
+          });
+        }
+      }, 300);
+      
     } catch (error) {
       console.error(error);
       const errorMessage = {
